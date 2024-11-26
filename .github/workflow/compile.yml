@@ -41,9 +41,38 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
       - name: Compile to executable
-        run: pyinstaller --onefile overlay.py
+        run: pyinstaller --onefile your_script.py
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
           name: linux-executable
-          path: dist/overlay
+          path: dist/your_script
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-linux]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          TAG_NAME=$(date +'%Y%m%d%H%M%S')
+          gh release create $TAG_NAME -t "Release $TAG_NAME" -n "Automated release" --target main
+      - name: Upload Windows executable
+        uses: actions/upload-release-asset@v1
+        with:
+          repo_token: ${{ secrets.GH_TOKEN }}
+          release_id: ${{ steps.create-release.outputs.release_id }}
+          asset_path: ./dist/your_script.exe
+          asset_name: your_script.exe
+          asset_content_type: application/octet-stream
+      - name: Upload Linux executable
+        uses: actions/upload-release-asset@v1
+        with:
+          repo_token: ${{ secrets.GH_TOKEN }}
+          release_id: ${{ steps.create-release.outputs.release_id }}
+          asset_path: ./dist/your_script
+          asset_name: your_script
+          asset_content_type: application/octet-stream
