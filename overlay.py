@@ -1,89 +1,61 @@
+import concurrent.futures
 import json
-import os
 import tkinter as tk
 from dataclasses import dataclass
 from typing import Tuple, Dict
-import concurrent.futures
-import pytesseract
-import re
-from rapidfuzz import process, fuzz
-import nltk
-from nltk.corpus import words
 
 import cv2
 import numpy as np
+import pytesseract
 from PIL import ImageGrab
+from rapidfuzz import process, fuzz
 
 
-# Load the list of English words
+# Load words dict for item names
 def load_custom_words():
     with open('db/dict', 'r') as f:
         return set(line.strip().lower() for line in f)
 
 
-english_words = set(load_custom_words())
+def custom_scorer(text, candidate, score_cutoff):
+    if candidate.lower() in text.lower():
+        return 100.0
+    return fuzz.ratio(text, candidate)
+item_words = set(load_custom_words())
+
+
 @dataclass
-class ImageData:
+class ItemData:
     description: str
-    # image_path: str
-    # template: np.ndarray  # Store the template image
-    # scale_factor: float = 1.0  # Scale factor compared to template
-    # threshold: float = 0.55  # Match confidence threshold
+
+
+def capture_screen() -> np.ndarray:
+    """Capture the current screen content"""
+    screen = np.array(ImageGrab.grab())
+    return cv2.cvtColor(screen, cv2.COLOR_RGB2BGR)
 
 
 class GameOverlay:
-    def __init__(self, images_folder: str, data_file: str, scale_factor: float = 1.0):
+    def __init__(self, data_file: str, scale_factor: float = 1.0):
         self.scale_factor = scale_factor
         self.label = None
         self.root = tk.Tk()
-        self.images = {}
+        self.data = {}
         self.text = ""
-        self.load_image_data(images_folder, data_file)
+        self.load_data(data_file)
 
-    # Load the list of custom English words from a file
-    def load_custom_words():
-        with open('db/dict', 'r') as f:
-            return set(line.strip().lower() for line in f)
-        # self.setup_overlay_window()
-
-    def load_image_data(self, images_folder: str, data_file: str):
+    def load_data(self, data_file: str):
         """Load images and their descriptions from the specified folder and data file"""
-
 
         # Load descriptions from JSON file
         with open(data_file, 'r') as f:
-            descriptions = json.load(f)
-
-        # Assign each key-value pair to self.images
-        for key, value in descriptions.items():
-            self.images[key] = ImageData(
-                description=value
-            )
-
-
-        # # Load and process each image
-        # for filename in os.listdir(images_folder):
-        #     if filename.endswith(('.png', '.jpg', '.jpeg')):
-        #         image_path = os.path.join(images_folder, filename)
-        #         image_name = os.path.splitext(filename)[0]
-        #
-        #         if image_name in descriptions:
-        #             # Load template image
-        #             template = cv2.imread(image_path)
-        #             self.images[image_name] = ImageData(
-        #                 image_path=image_path,
-        #                 description=descriptions[image_name],
-        #                 template=template,
-        #                 scale_factor=self.scale_factor
-        #             )
+            self.data = json.load(f)
 
     def setup_overlay_window(self):
-
 
         self.root.overrideredirect(True)  # Removes window decorations
         self.root.attributes("-topmost", True)  # Keeps the window on top of all others
         self.root.attributes("-transparentcolor", "black")  # Makes the background color transparent
-
 
         # Make the window full screen and transparent to clicks
         screen_width = self.root.winfo_screenwidth()
@@ -93,11 +65,6 @@ class GameOverlay:
 
         self.root.after(100, self._run)
         self.root.mainloop()
-
-    def capture_screen(self) -> np.ndarray:
-        """Capture the current screen content"""
-        screen = np.array(ImageGrab.grab())
-        return cv2.cvtColor(screen, cv2.COLOR_RGB2BGR)
 
     def detect_images(self, screen: np.ndarray) -> Dict[str, Tuple[int, int]]:
         """Detect loaded images in the screen capture"""
@@ -120,7 +87,7 @@ class GameOverlay:
 
         max_threads = 6  # Set the maximum number of threads
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
-            results = list(executor.map(lambda item: process_image(*item), self.images.items()))
+            results = list(executor.map(lambda item: process_image(*item), self.data.items()))
 
         for result in results:
             if result:
@@ -131,10 +98,7 @@ class GameOverlay:
 
     def detect_text(self, screen: np.ndarray):
 
-        def customScorer(text, candidate, score_cutoff):
-            if candidate.lower() in text.lower():
-                return 100.0
-            return fuzz.ratio(text, candidate)
+
 
         """Detect text in the screen capture"""
         detections = []
@@ -147,7 +111,6 @@ class GameOverlay:
         # Convert screen to grayscale
         screen_gray = cv2.cvtColor(cropped_screen, cv2.COLOR_BGR2GRAY)
 
-
         # Apply binary threshold to keep only white and black colors
         _, screen_binary = cv2.threshold(screen_gray, 254, 255, cv2.THRESH_BINARY)
 
@@ -155,16 +118,8 @@ class GameOverlay:
         upper_gray = np.array([135, 135, 135])
         gray_mask = cv2.inRange(cropped_screen, lower_gray, upper_gray)
 
-        # Combine the binary threshold and gray mask
+        # Combine the binary threshold and gray mask to get white text from room and gray text from shop
         combined_mask = cv2.bitwise_or(screen_binary, gray_mask)
-
-
-        # # Display the processed image
-        # cv2.imshow("Processed Image", combined_mask)
-        # cv2.waitKey(0)  # Wait for a key press to close the window
-        # cv2.destroyAllWindows()
-
-
 
         # Use pytesseract to detect text with custom configuration
         custom_config = r'--oem 3 --psm 6'
@@ -175,13 +130,12 @@ class GameOverlay:
                 continue
 
             # detections.append(text.strip())
-            best_match, score, _ = process.extractOne(text.lower(), english_words, scorer=fuzz.ratio)
+            best_match, score, _ = process.extractOne(text.lower(), item_words, scorer=fuzz.ratio)
             if score < 80:
                 continue
             detections.append(best_match.upper())
-            # if text.strip() and text.strip().lower() in english_words:
-            #     detections.append(text.strip())
-        best_match, score, _ = process.extractOne(' '.join(detections), self.images.keys(), scorer=customScorer)
+
+        best_match, score, _ = process.extractOne(' '.join(detections), self.data.keys(), scorer=custom_scorer)
         # Combine all text fields with space and remove leading/trailing spaces
         if score < 80:
             return ''
@@ -197,9 +151,10 @@ class GameOverlay:
         if self.label:
             self.label.destroy()
 
-        if text and text in self.images.keys():
-            description = self.images[text].description
-            self.label = tk.Label(self.root, text=description, font=('Arial', 15), fg='white', bg='black', wraplength=400)
+        if text and text in self.data.keys():
+            description = self.data[text]
+            self.label = tk.Label(self.root, text=description, font=('Arial', 15), fg='white', bg='black',
+                                  wraplength=400)
             screen_width = self.root.winfo_screenwidth()
             screen_height = self.root.winfo_screenheight()
             self.label.place(x=screen_width // 2, y=screen_height // 2, anchor='center')
@@ -209,24 +164,15 @@ class GameOverlay:
         """Main loop for the overlay"""
 
     def _run(self):
-        screen = self.capture_screen()
+        screen = capture_screen()
         detections = self.detect_text(screen)
         self.update_overlay(detections)
         self.root.after(1, self._run)
 
 
-
 # Example usage:
 if __name__ == "__main__":
-    # Suggested data structure (save as data.json):
-    """
-    {
-        "image1": "Description for image 1",
-        "image2": "Description for image 2"
-    }
-    """
     overlay = GameOverlay(
-        images_folder="./db/img/",
         data_file="./db/data.json"
     )
     overlay.run()
