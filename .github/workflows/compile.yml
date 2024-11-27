@@ -23,7 +23,7 @@ jobs:
       - name: Compile to executable
         run: pyinstaller --onefile overlay.py
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-executable
           path: dist/overlay.exe
@@ -44,7 +44,7 @@ jobs:
       - name: Compile to executable
         run: pyinstaller --onefile overlay.py
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-executable
           path: dist/overlay
@@ -67,13 +67,13 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/overlay.exe
+          asset_path: ./windows-executable.zip/overlay.exe
           asset_name: overlay.exe
           asset_content_type: application/octet-stream
       - name: Upload Linux executable
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/overlay
+          asset_path: ./linux-executable.zip/overlay
           asset_name: overlay
           asset_content_type: application/octet-stream
