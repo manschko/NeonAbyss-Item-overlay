@@ -26,7 +26,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-executable
-          path: dist/overlay.exe
+          path: |
+            dist/overlay.exe
+            db/
 
   build-linux:
     runs-on: ubuntu-latest
@@ -47,7 +49,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-executable
-          path: dist/overlay
+          path: |
+            dist/overlay
+            db/
 
   create-release:
     runs-on: ubuntu-latest
@@ -65,18 +69,13 @@ jobs:
           name: linux-executable
           path: dist
 
-      - name: Create tag
-        id: create_tag
-        run: |
-          TAG_NAME=v$(date +'%Y%m%d%H%M%S')
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          git tag $TAG_NAME
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ github.sha }}
           files: |
             dist/overlay.exe
             dist/overlay
+            dist/db/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
