@@ -27,7 +27,7 @@ jobs:
         with:
           name: windows-executable
           path: |
-            dist/overlay.exe
+            overlay.exe
             db/
 
   build-linux:
@@ -50,7 +50,7 @@ jobs:
         with:
           name: linux-executable
           path: |
-            dist/overlay
+            overlay
             db/
 
   create-release:
