@@ -56,24 +56,24 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
       - name: Create Release
+        id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           TAG_NAME=$(date +'%Y%m%d%H%M%S')
           gh release create $TAG_NAME -t "Release $TAG_NAME" -n "Automated release" --target main
+          echo "::set-output name=upload_url::$(gh release view $TAG_NAME --json uploadUrl --jq .uploadUrl)"
       - name: Upload Windows executable
         uses: actions/upload-release-asset@v1
         with:
-          repo_token: ${{ secrets.GH_TOKEN }}
-          release_id: ${{ steps.create-release.outputs.release_id }}
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./dist/overlay.exe
           asset_name: overlay.exe
           asset_content_type: application/octet-stream
       - name: Upload Linux executable
         uses: actions/upload-release-asset@v1
         with:
-          repo_token: ${{ secrets.GH_TOKEN }}
-          release_id: ${{ steps.create-release.outputs.release_id }}
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./dist/overlay
           asset_name: overlay
           asset_content_type: application/octet-stream
