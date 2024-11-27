@@ -53,27 +53,23 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-windows, build-linux]
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+      - name: Download Windows executable
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-executable
+          path: dist
+
+      - name: Download Linux executable
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-executable
+          path: dist
+
       - name: Create Release
-        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/overlay.exe
+            dist/overlay
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          TAG_NAME=$(date +'%Y%m%d%H%M%S')
-          gh release create $TAG_NAME -t "Release $TAG_NAME" -n "Automated release" --target main
-          echo "::set-output name=upload_url::$(gh release view $TAG_NAME --json uploadUrl --jq .uploadUrl)"
-      - name: Upload Windows executable
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./windows-executable/overlay.exe
-          asset_name: overlay.exe
-          asset_content_type: application/octet-stream
-      - name: Upload Linux executable
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./linux-executable/overlay
-          asset_name: overlay
-          asset_content_type: application/octet-stream
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
