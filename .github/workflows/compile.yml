@@ -1,10 +1,12 @@
-name: Compile Python Code
+name: Build and Release
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version type (major, minor, patch)'
+        required: true
+        default: 'patch'
 
 jobs:
   build-windows:
@@ -67,16 +69,41 @@ jobs:
         with:
           name: linux-executable
 
-
+      - name: Determine new version
+        id: new_version
+        run: |
+          git fetch --tags
+          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo "Latest tag: $latest_tag"
+          if [[ ! $latest_tag =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            latest_tag="0.0.0"
+          fi
+          IFS='.' read -r -a version_parts <<< "$latest_tag"
+          major=${version_parts[0]}
+          minor=${version_parts[1]}
+          patch=${version_parts[2]}
+          case "${{ inputs.version_type }}" in
+            major)
+              new_version="$((major + 1)).0.0"
+              ;;
+            minor)
+              new_version="$major.$((minor + 1)).0"
+              ;;
+            patch)
+              new_version="$major.$minor.$((patch + 1))"
+              ;;
+          esac
+          echo "New version: $new_version"
+          echo "::set-output name=version::$new_version"
 
       - name: Zip Windows files
-        run: zip -r overlay-windows.zip dist/overlay.exe dist/db
+        run: zip -j overlay-windows.zip dist/overlay.exe && zip -r overlay-windows.zip db
 
       - name: Zip Linux files
-        run: zip -r overlay-linux.zip dist/overlay dist/db
+        run: zip -j overlay-linux.zip dist/overlay && zip -r overlay-linux.zip db
 
       - name: Display structure of downloaded files
-        run: ls -R dist
+        run: ls -R
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
