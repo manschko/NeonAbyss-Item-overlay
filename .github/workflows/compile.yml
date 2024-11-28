@@ -98,7 +98,7 @@ jobs:
               ;;
           esac
           echo "New version: $new_version"
-          echo "::set-output name=version::$new_version"
+          echo "version=$new_version" >> $GITHUB_ENV
 
       - name: Zip Windows files
         run: zip -j overlay-windows.zip dist/overlay.exe && zip -r overlay-windows.zip db
@@ -112,7 +112,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ github.sha }}
+          tag_name: v${{ env.version }}
           files: |
             overlay-windows.zip
             overlay-linux.zip
