@@ -101,10 +101,10 @@ jobs:
           echo "version=$new_version" >> $GITHUB_ENV
 
       - name: Zip Windows files
-        run: zip -j overlay-windows.zip dist/overlay.exe && zip -r overlay-windows.zip db
+        run: zip -j overlay-windows.zip dist/overlay.exe && zip -r overlay-windows.zip db/data.json db/dict
 
-      - name: Zip Linux files
-        run: zip -j overlay-linux.zip dist/overlay && zip -r overlay-linux.zip db
+      - name: Tar and gzip Linux files
+        run: tar -czvf overlay-linux.tar.gz -C dist overlay && tar -rvf overlay-linux.tar.gz db/data.json db/dict
 
       - name: Display structure of downloaded files
         run: ls -R
