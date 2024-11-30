@@ -21,7 +21,7 @@ def custom_scorer(text, candidate, score_cutoff):
     if candidate.lower() in text.lower():
         return 100.0
     return fuzz.ratio(text, candidate)
-item_words = set(load_custom_words())
+
 
 
 @dataclass
@@ -37,6 +37,7 @@ def capture_screen() -> np.ndarray:
 
 class GameOverlay:
     def __init__(self, data_file: str, scale_factor: float = 1.0):
+        self.item_words = set(load_custom_words())
         self.scale_factor = scale_factor
         self.label = None
         self.root = tk.Tk()
@@ -130,7 +131,7 @@ class GameOverlay:
                 continue
 
             # detections.append(text.strip())
-            best_match, score, _ = process.extractOne(text.lower(), item_words, scorer=fuzz.ratio)
+            best_match, score, _ = process.extractOne(text.lower(), self.item_words, scorer=fuzz.ratio)
             if score < 80:
                 continue
             detections.append(best_match.upper())
