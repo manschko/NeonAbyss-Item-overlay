@@ -105,7 +105,7 @@ jobs:
         run: zip -j overlay-windows.zip dist/overlay.exe && zip -r overlay-windows.zip db/data.json db/dict
 
       - name: Tar and gzip Linux files
-        run: tar -czvf overlay-linux.tar.gz -C dist overlay && tar -rvf overlay-linux.tar.gz db/data.json db/dict
+        run: tar -czvf overlay-linux.tar.gz -C dist overlay -C .. db/data.json db/dict
 
       - name: Display structure of downloaded files
         run: ls -R
