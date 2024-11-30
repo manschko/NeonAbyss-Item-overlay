@@ -78,7 +78,7 @@ This project requires the following software to be installed:
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/mtruckses/neon-abyss-item-overlay.git
+    git clone https://github.com/manschko/NeonAbyss-Item-overlay.git
     cd neon-abyss-item-overlay
     ```
 
