@@ -4,6 +4,7 @@ import tkinter as tk
 from dataclasses import dataclass
 from typing import Tuple, Dict
 
+import itertools
 import cv2
 import numpy as np
 import pytesseract
@@ -17,11 +18,64 @@ def load_custom_words():
         return set(line.strip().lower() for line in f)
 
 
-def custom_scorer(text, candidate, score_cutoff):
+def custom_scorer_items(text, candidate, score_cutoff):
     if candidate.lower() in text.lower():
         return 100.0
     return fuzz.ratio(text, candidate)
 
+def custom_scorer_words(text, candidate, score_cutoff):
+    # Define custom character similarity
+    # Define custom character similarity
+    char_similarity = {
+        'v': 'y', 'y': 'v',
+        'i': 'l', 'l': 'i',
+        'o': '0', '0': 'o',
+    }
+
+    def generate_combinations(s):
+        # Generate all possible combinations of the mapped characters
+        def backtrack(current_str, index):
+            # Base case: if we've processed all characters, add to results
+            if index == len(current_str):
+                return [current_str]
+
+            # Get the current character
+            char = current_str[index]
+
+            # Possible replacements include the original character
+            # and any similar characters from the dictionary
+            possible_chars = [char]
+            if char in char_similarity:
+                possible_chars.append(char_similarity[char])
+
+            # Will store all combinations
+            combinations = []
+
+            # Try each possible character at this index
+            for possible_char in possible_chars:
+                # Create a new string with the possible character
+                new_str = current_str[:index] + possible_char + current_str[index + 1:]
+
+                # Recursively generate combinations for the rest of the string
+                sub_combinations = backtrack(new_str, index + 1)
+
+                # Add these sub-combinations to our results
+                combinations.extend(sub_combinations)
+
+            return combinations
+
+        return list(set(backtrack(text, 0)))
+
+    text_combinations = generate_combinations(text)
+    # Calculate the maximum score among all combinations
+    max_score = 0
+    for t in text_combinations:
+        score = fuzz.ratio(t, candidate)
+        if score > max_score:
+            max_score = score
+
+
+    return max_score if max_score >= score_cutoff else 0
 
 
 @dataclass
@@ -36,9 +90,9 @@ def capture_screen() -> np.ndarray:
 
 
 class GameOverlay:
-    def __init__(self, data_file: str, scale_factor: float = 1.0):
+    def __init__(self, data_file: str, debug: bool = False):
         self.item_words = set(load_custom_words())
-        self.scale_factor = scale_factor
+        self.debug = debug
         self.label = None
         self.root = tk.Tk()
         self.data = {}
@@ -122,6 +176,12 @@ class GameOverlay:
         # Combine the binary threshold and gray mask to get white text from room and gray text from shop
         combined_mask = cv2.bitwise_or(screen_binary, gray_mask)
 
+        # Display the processed image
+        if self.debug:
+            cv2.imshow("Processed Image", combined_mask)
+            cv2.waitKey(0)  # Wait for a key press to close the window
+            cv2.destroyAllWindows()
+
         # Use pytesseract to detect text with custom configuration
         custom_config = r'--oem 3 --psm 6'
         text_data = pytesseract.image_to_data(combined_mask, config=custom_config, output_type=pytesseract.Output.DICT)
@@ -131,12 +191,18 @@ class GameOverlay:
                 continue
 
             # detections.append(text.strip())
-            best_match, score, _ = process.extractOne(text.lower(), self.item_words, scorer=fuzz.ratio)
+            if self.debug:
+                print(text.lower())
+            best_match, score, _ = process.extractOne(text.lower(), self.item_words, scorer=custom_scorer_words)
             if score < 80:
                 continue
             detections.append(best_match.upper())
 
-        best_match, score, _ = process.extractOne(' '.join(detections), self.data.keys(), scorer=custom_scorer)
+        # Display the processed image
+        if self.debug:
+            print(detections)
+
+        best_match, score, _ = process.extractOne(' '.join(detections), self.data.keys(), scorer=custom_scorer_items)
         # Combine all text fields with space and remove leading/trailing spaces
         if score < 80:
             return ''
