@@ -7,7 +7,7 @@ from overlay import GameOverlay
 class text_recognition_test(unittest.TestCase):
     def setUp(self):
         os.chdir('..')  # Change the working directory to the parent folder
-        self.overlay = GameOverlay(data_file='./db/data.json')
+        self.overlay = GameOverlay(data_file='./db/data.json', debug=True)
 
     def test_detect_text(self):
         images_folder = './test/images'
@@ -16,7 +16,7 @@ class text_recognition_test(unittest.TestCase):
                 image_path = os.path.join(images_folder, image_name)
                 screen = cv2.imread(image_path)
                 detected_text = self.overlay.detect_text(screen)
-                expected_text = os.path.splitext(image_name)[0].upper()
+                expected_text = os.path.splitext(image_name)[0]
                 self.assertEqual(detected_text, expected_text, f"Failed for image: {image_name}")
 
 
