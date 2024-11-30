@@ -4,7 +4,6 @@ import tkinter as tk
 from dataclasses import dataclass
 from typing import Tuple, Dict
 
-import itertools
 import cv2
 import numpy as np
 import pytesseract
