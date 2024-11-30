@@ -77,8 +77,9 @@ jobs:
       - name: Determine new version
         id: new_version
         run: |
-          latest_tag=$(curl -s https://api.github.com/repos/${{ github.repository }}/tags | jq -r '.[0].name')
+          latest_tag=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name')
           echo "Latest tag: $latest_tag"
+          latest_tag=${latest_tag#v}  # Remove leading 'v' if present
           if [[ ! $latest_tag =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             latest_tag="0.0.0"
           fi
